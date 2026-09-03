@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Multi-Model Analytics Hub | Chẩn Đoán Tiểu Đường, Giá Nhà & E-commerce</title>
+    <meta name="description" content="Nền tảng ứng dụng Trí Tuệ Nhân Tạo tích hợp 3 mô hình Machine Learning: Chẩn đoán đái tháo đường, Định giá nhà đất King County và Phân tích mối quan tâm khách hàng E-commerce.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo-badge">
+                    <i data-lucide="cpu" class="logo-icon"></i>
+                </div>
+                <div class="header-text">
+                    <h1>AI Multi-Model Hub</h1>
+                    <p class="subtitle">Nền tảng Phân tích & Dự đoán Trí tuệ Nhân tạo Đa nhiệm</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="status-indicator">
+                    <span class="pulse-dot"></span>
+                    <span class="status-label">3 Models Sẵn Sàng</span>
+                </div>
+                <button id="themeToggle" class="btn-theme" title="Đổi giao diện Sáng / Tối">
+                    <i data-lucide="moon" id="themeIcon"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="tab-navigation">
+            <button class="nav-tab active" data-tab="tab-diabetes" id="navDiabetes">
+                <i data-lucide="activity" class="tab-icon"></i>
+                <div class="tab-info">
+                    <span class="tab-title">Chẩn Đoán Tiểu Đường</span>
+                    <span class="tab-desc">Random Forest Classifier</span>
+                </div>
+            </button>
+            <button class="nav-tab" data-tab="tab-house-price" id="navHousePrice">
+                <i data-lucide="home" class="tab-icon"></i>
+                <div class="tab-info">
+                    <span class="tab-title">Định Giá Bất Động Sản</span>
+                    <span class="tab-desc">King County ML Pipeline</span>
+                </div>
+            </button>
+            <button class="nav-tab" data-tab="tab-ecommerce" id="navEcommerce">
+                <i data-lucide="shopping-bag" class="tab-icon"></i>
+                <div class="tab-info">
+                    <span class="tab-title">Mối Quan Tâm E-commerce</span>
+                    <span class="tab-desc">NLP Multi-label SGD</span>
+                </div>
+            </button>
+            <button class="nav-tab" data-tab="tab-insights" id="navInsights">
+                <i data-lucide="bar-chart-3" class="tab-icon"></i>
+                <div class="tab-info">
+                    <span class="tab-title">Thông Số Mô Hình</span>
+                    <span class="tab-desc">Kiến trúc & Benchmark</span>
+                </div>
+            </button>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- ================= TAB 1: DIABETES ================= -->
+            <section id="tab-diabetes" class="tab-pane active">
+                <div class="section-intro">
+                    <div class="intro-badge">
+                        <i data-lucide="heart-pulse"></i> Y Tế & Chăm Sóc Sức Khỏe
+                    </div>
+                    <h2>Chẩn Đoán & Đánh Giá Nguy Cơ Tiểu Đường</h2>
+                    <p>Dự đoán xác suất mắc đái tháo đường dựa trên tiền sử bệnh lý, chỉ số khối cơ thể (BMI) và xét nghiệm sinh hóa máu (HbA1c & Glucose).</p>
+                </div>
+
+                <!-- Presets Bar -->
+                <div class="preset-wrapper">
+                    <span class="preset-label"><i data-lucide="sparkles"></i> Dữ liệu mẫu 1-Click:</span>
+                    <div class="preset-buttons">
+                        <button type="button" class="btn-preset preset-healthy" onclick="loadDiabetesPreset('healthy')">
+                            🟢 Người khỏe mạnh (Nguy cơ thấp)
+                        </button>
+                        <button type="button" class="btn-preset preset-prediabetes" onclick="loadDiabetesPreset('prediabetes')">
+                            🟡 Tiền tiểu đường (Nguy cơ vừa)
+                        </button>
+                        <button type="button" class="btn-preset preset-highrisk" onclick="loadDiabetesPreset('highrisk')">
+                            🔴 Nguy cơ cao (Đường huyết cao)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <!-- Form Card -->
+                    <div class="card form-card">
+                        <form id="diabetesForm">
+                            <div class="form-section-title">
+                                <i data-lucide="user"></i> Thông tin Nhân khẩu học
+                            </div>
+                            <div class="form-row grid-2">
+                                <div class="form-group">
+                                    <label for="d_age">Tuổi tác</label>
+                                    <input type="number" id="d_age" name="age" value="45" min="1" max="120" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="d_gender">Giới tính</label>
+                                    <select id="d_gender" name="gender">
+                                        <option value="Female">Nữ (Female)</option>
+                                        <option value="Male">Nam (Male)</option>
+                                        <option value="Other">Khác (Other)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row grid-2">
+                                <div class="form-group">
+                                    <label for="d_race">Chủng tộc</label>
+                                    <select id="d_race" name="race">
+                                        <option value="Caucasian">Caucasian (Người da trắng)</option>
+                                        <option value="Asian">Asian (Người châu Á)</option>
+                                        <option value="AfricanAmerican">African American</option>
+                                        <option value="Hispanic">Hispanic (Mỹ Latin)</option>
+                                        <option value="Other">Khác (Other)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="d_location">Bang / Khu vực</label>
+                                    <select id="d_location" name="location">
+                                        <!-- Populated dynamically -->
+                                        <option value="California">California</option>
+                                        <option value="New York">New York</option>
+                                        <option value="Texas">Texas</option>
+                                        <option value="Florida">Florida</option>
+                                        <option value="Washington">Washington</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-section-title">
+                                <i data-lucide="activity"></i> Thể trạng & Tiền sử Bệnh lý
+                            </div>
+                            <div class="form-row grid-2">
+                                <div class="form-group">
+                                    <label for="d_bmi">Chỉ số BMI (kg/m²)</label>
+                                    <input type="number" id="d_bmi" name="bmi" value="26.4" step="0.1" min="10" max="70" required>
+                                    <small class="helper-text">Chuẩn: 18.5 - 24.9 | Thừa cân: ≥ 25</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="d_smoking">Tiền sử hút thuốc</label>
+                                    <select id="d_smoking" name="smoking_history">
+                                        <option value="never">Chưa từng hút (Never)</option>
+                                        <option value="former">Đã cai thuốc (Former)</option>
+                                        <option value="current">Đang hút thuốc (Current)</option>
+                                        <option value="not current">Hiện không hút (Not current)</option>
+                                        <option value="ever">Từng hút thử (Ever)</option>
+                                        <option value="No Info">Không có thông tin (No Info)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row grid-2">
+                                <div class="form-group">
+                                    <label for="d_hypertension">Huyết áp cao (Hypertension)</label>
+                                    <select id="d_hypertension" name="hypertension">
+                                        <option value="0">Không (Bình thường)</option>
+                                        <option value="1">Có (Tăng huyết áp)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="d_heart_disease">Bệnh lý tim mạch (Heart Disease)</label>
+                                    <select id="d_heart_disease" name="heart_disease">
+                                        <option value="0">Không có</option>
+                                        <option value="1">Có tiền sử tim mạch</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-section-title">
+                                <i data-lucide="flask-conical"></i> Chỉ số Xét nghiệm Sinh hóa Máu
+                            </div>
+                            <div class="form-row grid-2">
+                                <div class="form-group">
+                                    <label for="d_hba1c">Mức HbA1c (%)</label>
+                                    <input type="number" id="d_hba1c" name="hbA1c_level" value="5.6" step="0.1" min="3" max="15" required>
+                                    <small class="helper-text">Bình thường: &lt; 5.7% | Nguy cơ: ≥ 6.5%</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="d_glucose">Đường huyết lúc đói (mg/dL)</label>
+                                    <input type="number" id="d_glucose" name="blood_glucose_level" value="115" step="1" min="50" max="400" required>
+                                    <small class="helper-text">Bình thường: &lt; 100 | Cao: ≥ 126 mg/dL</small>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn-submit" id="btnSubmitDiabetes">
+                                <i data-lucide="search"></i> Phân Tích & Chẩn Đoán Ngay
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Result Card -->
+                    <div class="card result-card" id="diabetesResultCard">
+                        <div class="result-placeholder" id="diabetesPlaceholder">
+                            <i data-lucide="stethoscope" class="placeholder-icon"></i>
+                            <h3>Chưa có dữ liệu chẩn đoán</h3>
+                            <p>Nhập thông tin bên trái hoặc chọn <strong>Dữ liệu mẫu 1-Click</strong> để bắt đầu dự đoán nguy cơ tiểu đường.</p>
+                        </div>
+                        <div class="result-content hidden" id="diabetesResultContent">
+                            <div class="result-header-box" id="d_diagnosis_box">
+                                <span class="badge" id="d_badge">Chẩn đoán</span>
+                                <h3 id="d_diagnosis_title">Kết quả Phân Tích</h3>
+                                <div class="risk-score-display">
+                                    <span class="risk-value" id="d_prob_val">0%</span>
+                                    <span class="risk-sub">Xác suất nguy cơ</span>
+                                </div>
+                            </div>
+
+                            <!-- Progress Bar -->
+                            <div class="risk-meter-wrapper">
+                                <div class="meter-labels">
+                                    <span>Rất thấp (&lt;20%)</span>
+                                    <span>Vừa (20-45%)</span>
+                                    <span>Cao (45-70%)</span>
+                                    <span>Báo động (&gt;70%)</span>
+                                </div>
+                                <div class="meter-bar-track">
+                                    <div class="meter-bar-fill" id="d_meter_fill" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Metric Evaluation Grid -->
+                            <div class="metric-eval-list" id="d_metric_list">
+                                <!-- Populated dynamically -->
+                            </div>
+
+                            <div class="advice-box" id="d_advice_box">
+                                <div class="advice-header">
+                                    <i data-lucide="shield-alert"></i>
+                                    <h4>Khuyến Nghị Chăm Sóc Sức Khỏe</h4>
+                                </div>
+                                <p id="d_advice_text">Duy trì lối sống lành mạnh, ăn uống thanh đạm và kiểm tra sức khỏe định kỳ hàng năm.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= TAB 2: HOUSE PRICE ================= -->
+            <section id="tab-house-price" class="tab-pane">
+                <div class="section-intro">
+                    <div class="intro-badge">
+                        <i data-lucide="building"></i> Bất Động Sản King County, Washington
+                    </div>
+                    <h2>Định Giá Nhà Đất Thông Minh (King County Real Estate)</h2>
+                    <p>Mô hình hồi quy rừng ngẫu nhiên (Random Forest Regressor) được huấn luyện trên 21 đặc trưng cấu trúc, vị trí, tọa độ địa lý và thời gian bán của King County.</p>
+                </div>
+
+                <!-- Presets Bar -->
+                <div class="preset-wrapper">
+                    <span class="preset-label"><i data-lucide="sparkles"></i> Dữ liệu mẫu 1-Click:</span>
+                    <div class="preset-buttons">
+                        <button type="button" class="btn-preset" onclick="loadHousePreset('condo')">
+                            🏢 Căn hộ Seattle ($450k - $550k)
+                        </button>
+                        <button type="button" class="btn-preset" onclick="loadHousePreset('suburb')">
+                            🏡 Nhà gia đình Kirkland/Redmond ($800k - $1M)
+                        </button>
+                        <button type="button" class="btn-preset" onclick="loadHousePreset('luxury')">
+                            💎 Biệt thự ven hồ Bellevue/Medina ($1.8M+)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <!-- Form Card -->
+                    <div class="card form-card">
+                        <form id="housePriceForm">
+                            <div class="form-section-title">
+                                <i data-lucide="layout"></i> Cấu trúc & Quy mô Bất Động Sản
+                            </div>
+                            <div class="form-row grid-3">
+                                <div class="form-group">
+                                    <label for="hp_bedrooms">Phòng ngủ (Bedrooms)</label>
+                                    <input type="number" id="hp_bedrooms" name="bedrooms" value="3" min="1" max="15" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="hp_bathrooms">Phòng tắm (Bathrooms)</label>
+                                    <input type="number" id="hp_bathrooms" name="bathrooms" value="2.0" step="0.25" min="0.5" max="10" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="hp_floors">Số tầng (Floors)</label>
+                                    <input type="number" id="hp_floors" name="floors" value="1.5" step="0.5" min="1" max="4" required>
+                                </div>
+                            </div>
+                            <div class="form-row grid-2">
+                                <div class="form-group">
+                                    <label for="hp_sqft_living">Diện tích nhà (sqft)</label>
+                                    <input type="number" id="hp_sqft_living" name="sqft_living" value="2000" min="300" max="15000" required>
+                                    <small class="helper-text" id="hp_m2_living">≈ 185.8 m²</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="hp_sqft_lot">Diện tích khuôn viên đất (sqft)</label>
+                                    <input type="number" id="hp_sqft_lot" name="sqft_lot" value="7500" min="500" max="1000000" required>
+                                    <small class="helper-text" id="hp_m2_lot">≈ 696.8 m²</small>
+                                </div>
+                            </div>
+
+                            <div class="form-section-title">
+                                <i data-lucide="award"></i> Chất Lượng Xây Dựng & Cảnh Quan
+                            </div>
+                            <div class="form-row grid-2">
+                                <div class="form-group">
+                                    <label for="hp_grade">Cấp độ thiết kế King County (Grade 1-13)</label>
+                                    <select id="hp_grade" name="grade">
+                                        <option value="4">Grade 4 - Thấp kém (Low)</option>
+                                        <option value="6">Grade 6 - Dưới trung bình (Low Average)</option>
+                                        <option value="7" selected>Grade 7 - Trung bình tiêu chuẩn (Average)</option>
+                                        <option value="8">Grade 8 - Khá tốt (Good)</option>
+                                        <option value="9">Grade 9 - Tốt vượt trội (Better)</option>
+                                        <option value="10">Grade 10 - Rất cao cấp (Very Good)</option>
+                                        <option value="11">Grade 11 - Tuyệt hảo (Excellent)</option>
+                                        <option value="12">Grade 12 - Sang trọng thượng lưu (Luxury)</option>
+                                        <option value="13">Grade 13 - Đỉnh cao dinh thự (Mansion)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="hp_condition">Tình trạng bảo quản (Condition 1-5)</label>
+                                    <select id="hp_condition" name="condition">
+                                        <option value="1">1 - Rất tồi tệ / Cần sửa lớn</option>
+                                        <option value="2">2 - Xuống cấp nhẹ</option>
+                                        <option value="3" selected>3 - Tình trạng trung bình ổn định</option>
+                                        <option value="4">4 - Tình trạng bảo quản tốt</option>
+                                        <option value="5">5 - Hoàn hảo như mới</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row grid-2">
+                                <div class="form-group">
+                                    <label for="hp_waterfront">Giáp mặt nước / Bờ hồ (Waterfront)</label>
+                                    <select id="hp_waterfront" name="waterfront">
+                                        <option value="0" selected>Không giáp bờ hồ/biển</option>
+                                        <option value="1">Có view giáp bờ hồ/biển (Waterfront)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="hp_view">Chất lượng View cảnh quan (View 0-4)</label>
+                                    <select id="hp_view" name="view">
+                                        <option value="0" selected>0 - Không có view đặc biệt</option>
+                                        <option value="1">1 - View thông thoáng nhẹ</option>
+                                        <option value="2">2 - View đồi núi / công viên đẹp</option>
+                                        <option value="3">3 - View toàn cảnh thành phố / hồ</option>
+                                        <option value="4">4 - View panorama tuyệt mỹ</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-section-title">
+                                <i data-lucide="map-pin"></i> Vị Trí Địa Lý & Năm Xây Dựng
+                            </div>
+                            <div class="form-row grid-2">
+                                <div class="form-group">
+                                    <label for="hp_zipcode">Mã Bưu Chính Zipcode (King County)</label>
+                                    <select id="hp_zipcode" name="zipcode">
+                                        <!-- Populated dynamically with 70 King County Zipcodes -->
+                                    </select>
+                                    <small class="helper-text" id="hp_city_badge">Khu vực: Bellevue Downtown</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="hp_yr_built">Năm xây dựng (Year Built)</label>
+                                    <input type="number" id="hp_yr_built" name="yr_built" value="1998" min="1900" max="2025" required>
+                                </div>
+                            </div>
+                            <div class="form-row grid-2">
+                                <div class="form-group">
+                                    <label for="hp_yr_renovated">Năm cải tạo (Nhập 0 nếu chưa cải tạo)</label>
+                                    <input type="number" id="hp_yr_renovated" name="yr_renovated" value="0" min="0" max="2025">
+                                </div>
+                                <div class="form-group">
+                                    <label for="hp_sqft_basement">Diện tích tầng hầm (sqft)</label>
+                                    <input type="number" id="hp_sqft_basement" name="sqft_basement" value="400" min="0" max="5000">
+                                </div>
+                            </div>
+
+                            <!-- Hidden coordinates populated automatically -->
+                            <input type="hidden" id="hp_lat" name="lat" value="47.61">
+                            <input type="hidden" id="hp_long" name="long" value="-122.20">
+
+                            <button type="submit" class="btn-submit" id="btnSubmitHouse">
+                                <i data-lucide="dollar-sign"></i> Định Giá Bất Động Sản Ngay
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Result Card -->
+                    <div class="card result-card" id="houseResultCard">
+                        <div class="result-placeholder" id="housePlaceholder">
+                            <i data-lucide="building-2" class="placeholder-icon"></i>
+                            <h3>Chưa có kết quả định giá</h3>
+                            <p>Nhập thông số bất động sản bên trái hoặc chọn <strong>Dữ liệu mẫu 1-Click</strong> để mô hình tính toán định giá.</p>
+                        </div>
+                        <div class="result-content hidden" id="houseResultContent">
+                            <div class="price-hero-box">
+                                <div class="price-header-label">
+                                    <i data-lucide="badge-check"></i> Giá trị ước tính bởi AI
+                                </div>
+                                <div class="price-main-value" id="hp_result_usd">$0</div>
+                                <div class="price-sub-value">
+                                    Quy đổi tương đương: <span class="vnd-highlight" id="hp_result_vnd">0 tỷ VNĐ</span>
+                                </div>
+                            </div>
+
+                            <div class="price-stats-grid">
+                                <div class="price-stat-item">
+                                    <span class="stat-lbl">Đơn giá / sqft</span>
+                                    <span class="stat-val" id="hp_stat_sqft">$0 / sqft</span>
+                                </div>
+                                <div class="price-stat-item">
+                                    <span class="stat-lbl">Đơn giá / m²</span>
+                                    <span class="stat-val" id="hp_stat_m2">$0 / m²</span>
+                                </div>
+                                <div class="price-stat-item">
+                                    <span class="stat-lbl">Tuổi căn nhà</span>
+                                    <span class="stat-val" id="hp_stat_age">0 năm</span>
+                                </div>
+                                <div class="price-stat-item">
+                                    <span class="stat-lbl">Khu vực Bưu chính</span>
+                                    <span class="stat-val" id="hp_stat_location">King County</span>
+                                </div>
+                            </div>
+
+                            <div class="property-summary-box">
+                                <h4><i data-lucide="file-text"></i> Tổng Hợp Hồ Sơ Bất Động Sản</h4>
+                                <ul class="property-specs" id="hp_property_specs">
+                                    <!-- Populated dynamically -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= TAB 3: E-COMMERCE ================= -->
+            <section id="tab-ecommerce" class="tab-pane">
+                <div class="section-intro">
+                    <div class="intro-badge">
+                        <i data-lucide="shopping-cart"></i> Xử Lý Ngôn Ngữ Tự Nhiên (NLP)
+                    </div>
+                    <h2>Phân Tích Mối Quan Tâm Đánh Giá Khách Hàng E-commerce</h2>
+                    <p>Mô hình học máy TF-IDF + SGDClassifier (One-vs-Rest) tự động bóc tách và phân loại 8 khía cạnh quan tâm (Aspect-Based Sentiment & Interest) từ văn bản đánh giá tiếng Việt.</p>
+                </div>
+
+                <!-- Presets Bar -->
+                <div class="preset-wrapper">
+                    <span class="preset-label"><i data-lucide="sparkles"></i> Đánh giá mẫu thử nhanh:</span>
+                    <div class="preset-buttons">
+                        <button type="button" class="btn-preset" onclick="loadEcomPreset(0)">
+                            🚀 Giao hàng siêu nhanh & đóng gói tốt
+                        </button>
+                        <button type="button" class="btn-preset" onclick="loadEcomPreset(1)">
+                            👕 Chất lượng áo đẹp, đúng size & shop tư vấn tận tình
+                        </button>
+                        <button type="button" class="btn-preset" onclick="loadEcomPreset(2)">
+                            ⚠️ Form áo hơi chật, vải thô ráp, giao hàng trễ
+                        </button>
+                        <button type="button" class="btn-preset" onclick="loadEcomPreset(3)">
+                            💰 Giá rẻ săn sale 1k rất hời, dùng tạm ổn
+                        </button>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <!-- Input Card -->
+                    <div class="card form-card">
+                        <form id="ecommerceForm">
+                            <div class="form-group">
+                                <label for="ecom_review">Nội dung đánh giá / phản hồi của khách hàng</label>
+                                <textarea id="ecom_review" name="review_text" rows="6" placeholder="Ví dụ: Áo chất vải rất mát, đường may tỉ mỉ nhưng shop đóng gói hơi sơ sài và giao hàng mất 5 ngày mới tới..." required></textarea>
+                                <div class="textarea-footer">
+                                    <span class="char-count" id="ecom_char_count">0 ký tự</span>
+                                    <button type="button" class="btn-clear" onclick="clearEcomReview()">Xóa nội dung</button>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn-submit" id="btnSubmitEcom">
+                                <i data-lucide="sparkles"></i> Phân Tích Khía Cạnh Quan Tâm
+                            </button>
+                        </form>
+
+                        <div class="aspect-legend">
+                            <h4>8 Khía Cạnh Mô Hình Nhận Diện:</h4>
+                            <div class="legend-tags">
+                                <span class="badge badge-aspect" style="--tag-color: #3B82F6">🏷️ Giá cả (Price)</span>
+                                <span class="badge badge-aspect" style="--tag-color: #10B981">🚚 Vận chuyển (Shipping)</span>
+                                <span class="badge badge-aspect" style="--tag-color: #8B5CF6">✨ Ngoại quan (Outlook)</span>
+                                <span class="badge badge-aspect" style="--tag-color: #F59E0B">🛡️ Chất lượng (Quality)</span>
+                                <span class="badge badge-aspect" style="--tag-color: #EC4899">📐 Kích cỡ (Size)</span>
+                                <span class="badge badge-aspect" style="--tag-color: #06B6D4">🎧 Dịch vụ Shop (Shop_Service)</span>
+                                <span class="badge badge-aspect" style="--tag-color: #6366F1">👍 Chung (General)</span>
+                                <span class="badge badge-aspect" style="--tag-color: #64748B">📎 Khác (Others)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Result Card -->
+                    <div class="card result-card" id="ecommerceResultCard">
+                        <div class="result-placeholder" id="ecomPlaceholder">
+                            <i data-lucide="message-square" class="placeholder-icon"></i>
+                            <h3>Chưa có nội dung phân tích</h3>
+                            <p>Nhập đánh giá tiếng Việt bên trái hoặc bấm chọn <strong>Đánh giá mẫu thử nhanh</strong> để nhận diện khía cạnh quan tâm.</p>
+                        </div>
+                        <div class="result-content hidden" id="ecomResultContent">
+                            <div class="ecom-detected-summary">
+                                <div class="summary-header">
+                                    <span class="badge badge-primary" id="ecom_count_badge">0 Khía Cạnh Được Đề Cập</span>
+                                    <span class="model-badge">TF-IDF + SGDClassifier</span>
+                                </div>
+                                <div class="detected-badges-list" id="ecom_detected_badges">
+                                    <!-- Badges populated dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- Chart Container -->
+                            <div class="chart-container-box">
+                                <h4>Biểu Đồ Radar Độ Tự Tin Các Khía Cạnh</h4>
+                                <div class="radar-canvas-wrapper">
+                                    <canvas id="aspectRadarChart"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- All Aspects Breakdown -->
+                            <div class="all-aspects-list">
+                                <h4>Chi Tiết Xác Suất 8 Khía Cạnh:</h4>
+                                <div id="ecom_aspects_bars">
+                                    <!-- Progress bars populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= TAB 4: MODEL INSIGHTS ================= -->
+            <section id="tab-insights" class="tab-pane">
+                <div class="section-intro">
+                    <div class="intro-badge">
+                        <i data-lucide="layers"></i> Kiến Trúc Hệ Thống & Huấn Luyện
+                    </div>
+                    <h2>Tổng Quan Kỹ Thuật 3 Mô Hình Machine Learning</h2>
+                    <p>Chi tiết về kiến trúc Pipeline, kỹ thuật trích xuất đặc trưng (Feature Engineering), các metric đánh giá và API tích hợp.</p>
+                </div>
+
+                <div class="insights-grid">
+                    <!-- Model 1 Card -->
+                    <div class="card insight-card">
+                        <div class="card-icon-badge color-rose">
+                            <i data-lucide="activity"></i>
+                        </div>
+                        <h3>1. Chẩn Đoán Bệnh Tiểu Đường</h3>
+                        <p class="insight-desc">Phân loại nhị phân nguy cơ đái tháo đường dựa trên dữ liệu lâm sàng và xét nghiệm máu.</p>
+                        <div class="insight-details">
+                            <div class="detail-row">
+                                <span class="label">Mô hình:</span>
+                                <span class="val font-mono">Random Forest Classifier (200 trees)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Xử lý mất cân bằng:</span>
+                                <span class="val font-mono">class_weight='balanced'</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Kỹ thuật đặc trưng:</span>
+                                <span class="val font-mono">cardio_risk, glucose_hba1c_interaction</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Tiền xử lý:</span>
+                                <span class="val font-mono">MedianImputer + StandardScaler + OneHotEncoder</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Tệp mô hình:</span>
+                                <span class="val font-mono">model/diabetes_model.joblib</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Model 2 Card -->
+                    <div class="card insight-card">
+                        <div class="card-icon-badge color-blue">
+                            <i data-lucide="home"></i>
+                        </div>
+                        <h3>2. Dự Đoán Giá Nhà King County</h3>
+                        <p class="insight-desc">Hồi quy định giá bất động sản dựa trên 21 đặc trưng cấu trúc, vị trí bưu chính và thời gian.</p>
+                        <div class="insight-details">
+                            <div class="detail-row">
+                                <span class="label">Mô hình:</span>
+                                <span class="val font-mono">Random Forest Regressor (max_features='sqrt')</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Đặc trưng thời gian:</span>
+                                <span class="val font-mono">house_age, renovated, years_since_renovation</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Mã hóa vị trí:</span>
+                                <span class="val font-mono">70 King County Zipcodes One-Hot + Lat/Long</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Hệ thống đánh giá:</span>
+                                <span class="val font-mono">Grade (1-13) & Condition (1-5)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Tệp mô hình:</span>
+                                <span class="val font-mono">model/house_price_pipeline.joblib</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Model 3 Card -->
+                    <div class="card insight-card">
+                        <div class="card-icon-badge color-emerald">
+                            <i data-lucide="shopping-bag"></i>
+                        </div>
+                        <h3>3. Khía Cạnh Đánh Giá E-commerce</h3>
+                        <p class="insight-desc">Phân loại đa nhãn (Multi-label) trích xuất 8 khía cạnh từ đánh giá khách hàng tiếng Việt.</p>
+                        <div class="insight-details">
+                            <div class="detail-row">
+                                <span class="label">Mô hình:</span>
+                                <span class="val font-mono">OneVsRestClassifier(SGDClassifier log_loss)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Vector hóa văn bản:</span>
+                                <span class="val font-mono">TfidfVectorizer (N-gram 1-2, 6000 features)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Số nhãn mục tiêu:</span>
+                                <span class="val font-mono">8 Aspects (Price, Shipping, Quality,...)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Tiêu chí tối ưu:</span>
+                                <span class="val font-mono">Micro-F1 & Macro-F1 Balanced</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Tệp mô hình:</span>
+                                <span class="val font-mono">model/ecommerce_interest_pipeline.joblib</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API Reference Box -->
+                <div class="card api-card">
+                    <h3><i data-lucide="code"></i> Tài Liệu REST API Tích Hợp</h3>
+                    <div class="api-endpoints-table">
+                        <div class="api-item">
+                            <span class="http-method post">POST</span>
+                            <span class="endpoint-path">/api/predict/diabetes</span>
+                            <span class="endpoint-desc">Nhận thông số lâm sàng $\rightarrow$ Trả về chẩn đoán & xác suất nguy cơ.</span>
+                        </div>
+                        <div class="api-item">
+                            <span class="http-method post">POST</span>
+                            <span class="endpoint-path">/api/predict/house-price</span>
+                            <span class="endpoint-desc">Nhận thông số bất động sản $\rightarrow$ Trả về giá trị ước tính USD & VNĐ.</span>
+                        </div>
+                        <div class="api-item">
+                            <span class="http-method post">POST</span>
+                            <span class="endpoint-path">/api/predict/ecommerce</span>
+                            <span class="endpoint-desc">Nhận đoạn văn bản review $\rightarrow$ Trả về 8 khía cạnh quan tâm & điểm xác suất.</span>
+                        </div>
+                        <div class="api-item">
+                            <span class="http-method get">GET</span>
+                            <span class="endpoint-path">/api/model-info</span>
+                            <span class="endpoint-desc">Lấy siêu dữ liệu cấu hình và danh mục zipcode, khía cạnh.</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>© 2026 AI Multi-Model Analytics Hub | Huấn luyện & Tích hợp hoàn chỉnh từ tập dữ liệu Machine Learning</p>
+        </footer>
+    </div>
+
+    <!-- Custom JS Script -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
