@@ -5,6 +5,7 @@ import datetime
 import joblib
 import pandas as pd
 import numpy as np
+import gc
 from diabetes_knowledge_graph import neo4j_graph
 
 # Feature engineering function required by diabetes_model.joblib
@@ -183,55 +184,59 @@ class ModelManager:
 
         self.ecommerce_bundle = None
         self.ecommerce_pipeline = None
-        self.ecommerce_aspects = []
+        self.ecommerce_aspects = [
+            'Price', 'Shipping', 'Outlook', 'Quality', 'Size', 'Shop_Service', 'General', 'Others'
+        ]
 
-        self.load_all_models()
+        # Lazy loading mode: models are loaded on first prediction to minimize startup RAM (< 512MB for Render)
         self.initialized = True
 
-    def load_all_models(self):
-        print("[ModelManager] Loading Machine Learning models...")
+    def get_diabetes_pipeline(self):
+        if self.diabetes_pipeline is None:
+            diabetes_path = os.path.join(self.models_dir, "diabetes_model.joblib")
+            if os.path.exists(diabetes_path):
+                try:
+                    print("[ModelManager] Lazy-loading Diabetes Model into RAM...")
+                    self.diabetes_bundle = joblib.load(diabetes_path)
+                    self.diabetes_pipeline = self.diabetes_bundle["pipeline"]
+                    gc.collect()
+                    print(f" [OK] Diabetes Model loaded: {self.diabetes_bundle.get('model_name', 'Random Forest')}")
+                except Exception as e:
+                    print(f" [ERROR] Could not load diabetes model: {e}")
+        return self.diabetes_pipeline
 
-        # 1. Load Diabetes Model
-        diabetes_path = os.path.join(self.models_dir, "diabetes_model.joblib")
-        if os.path.exists(diabetes_path):
-            try:
-                self.diabetes_bundle = joblib.load(diabetes_path)
-                self.diabetes_pipeline = self.diabetes_bundle["pipeline"]
-                print(f" [OK] Diabetes Model loaded: {self.diabetes_bundle.get('model_name', 'Random Forest')}")
-            except Exception as e:
-                print(f" [ERROR] Could not load diabetes model: {e}")
-        else:
-            print(f" [WARNING] Diabetes model not found at {diabetes_path}")
+    def get_house_price_pipeline(self):
+        if self.house_price_pipeline is None:
+            hp_path = os.path.join(self.models_dir, "house_price_pipeline.joblib")
+            if os.path.exists(hp_path):
+                try:
+                    print("[ModelManager] Lazy-loading House Price Pipeline into RAM...")
+                    self.house_price_pipeline = joblib.load(hp_path)
+                    gc.collect()
+                    print(" [OK] House Price Pipeline loaded successfully.")
+                except Exception as e:
+                    print(f" [ERROR] Could not load house price pipeline: {e}")
+        return self.house_price_pipeline
 
-        # 2. Load House Price Pipeline
-        hp_path = os.path.join(self.models_dir, "house_price_pipeline.joblib")
-        if os.path.exists(hp_path):
-            try:
-                self.house_price_pipeline = joblib.load(hp_path)
-                print(" [OK] House Price Pipeline loaded successfully.")
-            except Exception as e:
-                print(f" [ERROR] Could not load house price pipeline: {e}")
-        else:
-            print(f" [WARNING] House price pipeline not found at {hp_path}")
-
-        # 3. Load Ecommerce Pipeline
-        ecom_path = os.path.join(self.models_dir, "ecommerce_interest_pipeline.joblib")
-        if os.path.exists(ecom_path):
-            try:
-                self.ecommerce_bundle = joblib.load(ecom_path)
-                self.ecommerce_pipeline = self.ecommerce_bundle["pipeline"]
-                self.ecommerce_aspects = self.ecommerce_bundle.get("aspect_names", [
-                    'Price', 'Shipping', 'Outlook', 'Quality', 'Size', 'Shop_Service', 'General', 'Others'
-                ])
-                print(f" [OK] Ecommerce Pipeline loaded with {len(self.ecommerce_aspects)} aspects.")
-            except Exception as e:
-                print(f" [ERROR] Could not load ecommerce pipeline: {e}")
-        else:
-            print(f" [WARNING] Ecommerce pipeline not found at {ecom_path}")
+    def get_ecommerce_pipeline(self):
+        if self.ecommerce_pipeline is None:
+            ecom_path = os.path.join(self.models_dir, "ecommerce_interest_pipeline.joblib")
+            if os.path.exists(ecom_path):
+                try:
+                    print("[ModelManager] Lazy-loading Ecommerce Pipeline into RAM...")
+                    self.ecommerce_bundle = joblib.load(ecom_path)
+                    self.ecommerce_pipeline = self.ecommerce_bundle["pipeline"]
+                    self.ecommerce_aspects = self.ecommerce_bundle.get("aspect_names", self.ecommerce_aspects)
+                    gc.collect()
+                    print(f" [OK] Ecommerce Pipeline loaded with {len(self.ecommerce_aspects)} aspects.")
+                except Exception as e:
+                    print(f" [ERROR] Could not load ecommerce pipeline: {e}")
+        return self.ecommerce_pipeline
 
     # ==================== DIABETES PREDICTION ====================
     def predict_diabetes(self, data: dict) -> dict:
-        if self.diabetes_pipeline is None:
+        pipeline = self.get_diabetes_pipeline()
+        if pipeline is None:
             raise RuntimeError("Mô hình chẩn đoán tiểu đường chưa sẵn sàng.")
 
         # Map inputs
@@ -342,7 +347,8 @@ class ModelManager:
 
     # ==================== HOUSE PRICE PREDICTION ====================
     def predict_house_price(self, data: dict) -> dict:
-        if self.house_price_pipeline is None:
+        pipeline = self.get_house_price_pipeline()
+        if pipeline is None:
             raise RuntimeError("Mô hình dự đoán giá nhà chưa sẵn sàng.")
 
         zipcode = str(data.get("zipcode", "98004")).strip()
@@ -394,7 +400,7 @@ class ModelManager:
         }
 
         df_input = pd.DataFrame([row])
-        pred_price = float(self.house_price_pipeline.predict(df_input)[0])
+        pred_price = float(pipeline.predict(df_input)[0])
         pred_price = max(50000.0, pred_price)
 
         # Exchange rate USD to VND (~ 25,500 VND/USD)
@@ -429,17 +435,18 @@ class ModelManager:
 
     # ==================== ECOMMERCE INTEREST PREDICTION ====================
     def predict_ecommerce(self, review_text: str) -> dict:
-        if self.ecommerce_pipeline is None:
+        pipeline = self.get_ecommerce_pipeline()
+        if pipeline is None:
             raise RuntimeError("Mô hình phân tích E-commerce chưa sẵn sàng.")
 
         cleaned = clean_review(review_text)
         if not cleaned:
             cleaned = "Sản phẩm tốt"
 
-        preds = self.ecommerce_pipeline.predict([cleaned])[0]
+        preds = pipeline.predict([cleaned])[0]
 
-        has_proba = hasattr(self.ecommerce_pipeline, "predict_proba")
-        probas = self.ecommerce_pipeline.predict_proba([cleaned])[0] if has_proba else [float(p) for p in preds]
+        has_proba = hasattr(pipeline, "predict_proba")
+        probas = pipeline.predict_proba([cleaned])[0] if has_proba else [float(p) for p in preds]
 
         aspect_results = []
         detected_aspects = []

@@ -15,9 +15,9 @@ def index():
 def health():
     return jsonify({
         "status": "healthy",
-        "diabetes_ready": manager.diabetes_pipeline is not None,
-        "house_price_ready": manager.house_price_pipeline is not None,
-        "ecommerce_ready": manager.ecommerce_pipeline is not None
+        "diabetes_ready": manager.diabetes_pipeline is not None or os.path.exists(os.path.join(manager.models_dir, "diabetes_model.joblib")),
+        "house_price_ready": manager.house_price_pipeline is not None or os.path.exists(os.path.join(manager.models_dir, "house_price_pipeline.joblib")),
+        "ecommerce_ready": manager.ecommerce_pipeline is not None or os.path.exists(os.path.join(manager.models_dir, "ecommerce_interest_pipeline.joblib"))
     })
 
 @app.route("/api/model-info", methods=["GET"])
@@ -27,10 +27,10 @@ def model_info():
         "status": "success",
         "models": {
             "diabetes": {
-                "name": manager.diabetes_bundle.get("model_name", "Random Forest Classifier") if manager.diabetes_bundle else "Random Forest",
+                "name": "Random Forest Classifier (60 Trees Optimized)",
                 "type": "Classification (Binary)",
                 "target": "diabetes (0 = Âm tính, 1 = Dương tính)",
-                "features": manager.diabetes_bundle.get("input_features", []) if manager.diabetes_bundle else []
+                "features": ["year", "age", "bmi", "hbA1c_level", "blood_glucose_level", "gender", "location", "smoking_history", "hypertension", "heart_disease"]
             },
             "house_price": {
                 "name": "Random Forest Regressor (King County Pipeline)",
