@@ -4,6 +4,10 @@
 
 let aspectChartInstance = null;
 let metadataCache = null;
+let visNetworkInstance = null;
+let isPhysicsEnabled = true;
+let currentCypherQuery = "";
+let currentGraphRawData = null;
 
 // Initialize when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
@@ -13,6 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initSqftConversion();
     initCharCounter();
     loadMetadata();
+    initDiabetesExtensions();
 
     // Form Event Listeners
     document.getElementById("diabetesForm").addEventListener("submit", handleDiabetesSubmit);
@@ -333,6 +338,393 @@ function renderDiabetesResult(data) {
     } else {
         adviceText.innerHTML = `<strong>Trạng thái tốt:</strong> Các chỉ số xét nghiệm và thể trạng hiện tại nằm trong giới hạn an toàn. Tiếp tục duy trì chế độ dinh dưỡng cân bằng và kiểm tra sức khỏe định kỳ.`;
     }
+
+    // Render FPT Long Châu Medication Suggestions & Neo4j Knowledge Graph
+    renderDiabetesExtensions(data);
+}
+
+/* ================= DIABETES EXTENSIONS: FPT LONG CHAU & NEO4J ================= */
+function initDiabetesExtensions() {
+    // 1. Sub-tab switching between Medications and Knowledge Graph
+    const extTabs = document.querySelectorAll(".btn-ext-tab");
+    extTabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            extTabs.forEach(t => t.classList.remove("active"));
+            document.querySelectorAll(".ext-tab-pane").forEach(p => p.classList.remove("active"));
+
+            tab.classList.add("active");
+            const targetId = tab.getAttribute("data-ext-tab");
+            const targetPane = document.getElementById(targetId);
+            if (targetPane) {
+                targetPane.classList.add("active");
+            }
+
+            // If switching to graph tab and network instance exists, refit
+            if (targetId === "ext-graph" && visNetworkInstance) {
+                setTimeout(() => {
+                    visNetworkInstance.fit();
+                }, 100);
+            }
+            initLucide();
+        });
+    });
+
+    // 2. Toolbar action: Reset View
+    const btnReset = document.getElementById("btnResetGraphView");
+    if (btnReset) {
+        btnReset.addEventListener("click", () => {
+            if (visNetworkInstance) visNetworkInstance.fit();
+        });
+    }
+
+    // 3. Toolbar action: Toggle Physics
+    const btnPhysics = document.getElementById("btnTogglePhysics");
+    if (btnPhysics) {
+        btnPhysics.addEventListener("click", () => {
+            if (!visNetworkInstance) return;
+            isPhysicsEnabled = !isPhysicsEnabled;
+            visNetworkInstance.setOptions({ physics: { enabled: isPhysicsEnabled } });
+            btnPhysics.innerHTML = isPhysicsEnabled ? 
+                `<i data-lucide="zap"></i> Cố định` : 
+                `<i data-lucide="zap-off"></i> Chuyển động`;
+            initLucide();
+        });
+    }
+
+    // 4. Toolbar action: Show Cypher Query Box
+    const btnShowCypher = document.getElementById("btnShowCypher");
+    const cypherBox = document.getElementById("cypherBoxWrapper");
+    if (btnShowCypher && cypherBox) {
+        btnShowCypher.addEventListener("click", () => {
+            cypherBox.classList.toggle("hidden");
+            if (!cypherBox.classList.contains("hidden")) {
+                cypherBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
+        });
+    }
+
+    // 5. Copy Cypher Query
+    const btnCopyCypher = document.getElementById("btnCopyCypher");
+    if (btnCopyCypher) {
+        btnCopyCypher.addEventListener("click", () => {
+            if (!currentCypherQuery) return;
+            navigator.clipboard.writeText(currentCypherQuery).then(() => {
+                const orig = btnCopyCypher.innerHTML;
+                btnCopyCypher.innerHTML = `<i data-lucide="check"></i> Đã sao chép!`;
+                setTimeout(() => {
+                    btnCopyCypher.innerHTML = orig;
+                    initLucide();
+                }, 2000);
+            });
+        });
+    }
+
+    // 6. Close Node Inspector
+    const btnCloseInspector = document.getElementById("btnCloseInspector");
+    if (btnCloseInspector) {
+        btnCloseInspector.addEventListener("click", () => {
+            const insp = document.getElementById("nodeInspector");
+            if (insp) insp.classList.add("hidden");
+        });
+    }
+
+    // 7. Neo4j Settings Modal
+    const btnNeo4j = document.getElementById("btnNeo4jSettings");
+    const modal = document.getElementById("neo4jModal");
+    const btnCloseModal = document.getElementById("btnCloseNeo4jModal");
+    const btnCancelModal = document.getElementById("btnCancelNeo4jModal");
+    const btnTestConnect = document.getElementById("btnTestNeo4jConnect");
+
+    if (btnNeo4j && modal) {
+        btnNeo4j.addEventListener("click", () => {
+            modal.classList.remove("hidden");
+        });
+    }
+
+    const hideModal = () => {
+        if (modal) modal.classList.add("hidden");
+    };
+    if (btnCloseModal) btnCloseModal.addEventListener("click", hideModal);
+    if (btnCancelModal) btnCancelModal.addEventListener("click", hideModal);
+
+    if (btnTestConnect) {
+        btnTestConnect.addEventListener("click", async () => {
+            const uri = document.getElementById("neo4jUri").value.trim();
+            const user = document.getElementById("neo4jUser").value.trim();
+            const password = document.getElementById("neo4jPassword").value.trim();
+            const msgBox = document.getElementById("neo4jConnectMsg");
+
+            btnTestConnect.disabled = true;
+            btnTestConnect.innerHTML = `<span class="pulse-dot"></span> Đang thử kết nối...`;
+
+            try {
+                const res = await fetch("/api/diabetes/neo4j-connect", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ uri, user, password })
+                });
+                const data = await res.json();
+                msgBox.className = `neo4j-connect-status ${data.connected ? "success" : "error"}`;
+                msgBox.textContent = data.message;
+                updateNeo4jStatusPill(data);
+            } catch (err) {
+                msgBox.className = "neo4j-connect-status error";
+                msgBox.textContent = "Không thể gửi yêu cầu kết nối: " + err.message;
+            } finally {
+                btnTestConnect.disabled = false;
+                btnTestConnect.innerHTML = `<i data-lucide="refresh-cw"></i> Thử Kết Nối & Đồng Bộ`;
+                initLucide();
+            }
+        });
+    }
+}
+
+function updateNeo4jStatusPill(statusData) {
+    const pill = document.getElementById("neo4jStatusPill");
+    const label = document.getElementById("neo4jStatusLabel");
+    if (!pill || !label) return;
+
+    if (statusData && statusData.connected) {
+        pill.style.background = "rgba(16, 185, 129, 0.15)";
+        pill.style.borderColor = "rgba(16, 185, 129, 0.35)";
+        label.textContent = "Neo4j Server: Đã kết nối Bolt";
+    } else {
+        pill.style.background = "rgba(59, 130, 246, 0.15)";
+        pill.style.borderColor = "rgba(59, 130, 246, 0.35)";
+        label.textContent = "In-Memory Knowledge Graph Engine";
+    }
+}
+
+function renderDiabetesExtensions(data) {
+    const extContainer = document.getElementById("diabetesExtensions");
+    if (!extContainer) return;
+    extContainer.classList.remove("hidden");
+
+    // 1. Medication Count & Grid
+    const meds = data.recommended_medications || [];
+    const countEl = document.getElementById("extMedCount");
+    if (countEl) countEl.textContent = meds.length;
+
+    renderMedicationsGrid(meds);
+
+    // 2. Clinical Alerts Banner
+    const alertBanner = document.getElementById("clinicalAlertBanner");
+    const alertText = document.getElementById("clinicalAlertText");
+    if (alertBanner && alertText) {
+        if (data.clinical_alerts && data.clinical_alerts.length > 0) {
+            alertText.innerHTML = data.clinical_alerts.map(a => `<div>${a}</div>`).join("");
+            alertBanner.classList.remove("hidden");
+        } else {
+            alertBanner.classList.add("hidden");
+        }
+    }
+
+    // 3. Cypher Query
+    currentCypherQuery = data.cypher_query || "";
+    const cypherCode = document.getElementById("cypherCodeDisplay");
+    if (cypherCode) {
+        cypherCode.textContent = currentCypherQuery;
+    }
+
+    // 4. Update Neo4j Status Pill
+    if (data.neo4j_status) {
+        updateNeo4jStatusPill(data.neo4j_status);
+    }
+
+    // 5. Render Knowledge Graph
+    if (data.knowledge_graph) {
+        currentGraphRawData = data.knowledge_graph;
+        renderKnowledgeGraph(data.knowledge_graph);
+    }
+
+    initLucide();
+}
+
+function renderMedicationsGrid(medications) {
+    const grid = document.getElementById("medicationsGrid");
+    if (!grid) return;
+    grid.innerHTML = "";
+
+    if (!medications || medications.length === 0) {
+        grid.innerHTML = `<div class="result-placeholder"><p>Không có phác đồ thuốc tương ứng.</p></div>`;
+        return;
+    }
+
+    medications.forEach(med => {
+        const isPriority = med.badge_color === "rose" || med.priority_tag?.includes("Bảo vệ Tim");
+        const card = document.createElement("div");
+        card.className = `med-card ${isPriority ? "priority-card" : ""}`;
+        card.innerHTML = `
+            <div>
+                <div class="med-card-top">
+                    <span class="med-tag ${med.badge_color || 'indigo'}">${med.priority_tag || med.badge}</span>
+                    <span class="med-rx-badge">${med.prescription_required ? 'Thuốc Kê Đơn (Rx)' : 'Không Kê Đơn (OTC)'}</span>
+                </div>
+                <h4 class="med-title">${med.name}</h4>
+                <div class="med-active-ingredient">🔬 Hoạt chất: ${med.active_ingredient}</div>
+                <div class="med-reason-box">
+                    <strong>Đánh giá ca bệnh:</strong> ${med.match_reason}
+                </div>
+                <div class="med-details-row">
+                    <div class="med-detail-item">
+                        <strong>Nhóm dược lý:</strong>
+                        <span>${med.drug_class}</span>
+                    </div>
+                    <div class="med-detail-item">
+                        <strong>Cơ chế chính:</strong>
+                        <span>${med.mechanism}</span>
+                    </div>
+                    <div class="med-detail-item">
+                        <strong>Đích tác động:</strong>
+                        <span>${med.target_organ_text || med.target_organ}</span>
+                    </div>
+                    <div class="med-detail-item">
+                        <strong>Lưu ý / Chống CĐ:</strong>
+                        <span>${med.cautions}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="med-footer">
+                <div class="med-price-group">
+                    <span class="med-price-label">Giá tham khảo FPT Long Châu</span>
+                    <span class="med-price-val">${med.price_text}</span>
+                </div>
+                <a href="${med.long_chau_url}" target="_blank" rel="noopener noreferrer" class="btn-lc-link" title="Xem trên website FPT Long Châu">
+                    <i data-lucide="external-link"></i> Tìm tại Long Châu
+                </a>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+function renderKnowledgeGraph(graphData) {
+    const container = document.getElementById("diabetesGraphCanvas");
+    if (!container || !window.vis) return;
+
+    const nodesData = (graphData.nodes || []).map(n => {
+        let shape = n.shape || "dot";
+        let size = n.size || 24;
+        let colorObj = {
+            background: n.color || "#6366F1",
+            border: "#ffffff",
+            highlight: { background: "#EC4899", border: "#ffffff" },
+            hover: { background: "#8B5CF6", border: "#ffffff" }
+        };
+
+        return {
+            id: n.id,
+            label: n.label,
+            title: n.title,
+            shape: shape,
+            size: size,
+            color: colorObj,
+            font: {
+                color: "#F9FAFB",
+                size: 13,
+                face: "Plus Jakarta Sans",
+                strokeWidth: 2,
+                strokeColor: "#0A0E17",
+                multi: true
+            },
+            shadow: { enabled: true, color: "rgba(0,0,0,0.5)", size: 10, x: 2, y: 2 },
+            raw: n
+        };
+    });
+
+    const edgesData = (graphData.edges || []).map(e => ({
+        from: e.from,
+        to: e.to,
+        label: e.label,
+        arrows: e.arrows || "to",
+        dashes: e.dashes || false,
+        color: {
+            color: (e.color && e.color.color) ? e.color.color : (typeof e.color === 'string' ? e.color : "#94A3B8"),
+            highlight: "#6366F1",
+            hover: "#38BDF8"
+        },
+        font: {
+            size: 10,
+            align: "middle",
+            color: "#CBD5E1",
+            strokeWidth: 0,
+            background: "rgba(15, 23, 42, 0.75)"
+        },
+        smooth: {
+            enabled: true,
+            type: "dynamic",
+            roundness: 0.5
+        }
+    }));
+
+    const data = {
+        nodes: new vis.DataSet(nodesData),
+        edges: new vis.DataSet(edgesData)
+    };
+
+    const options = {
+        physics: {
+            enabled: isPhysicsEnabled,
+            solver: "forceAtlas2Based",
+            forceAtlas2Based: {
+                gravitationalConstant: -70,
+                centralGravity: 0.015,
+                springLength: 130,
+                springConstant: 0.08,
+                damping: 0.4
+            },
+            stabilization: {
+                iterations: 150
+            }
+        },
+        interaction: {
+            hover: true,
+            tooltipDelay: 150,
+            navigationButtons: false,
+            keyboard: false,
+            zoomView: true,
+            dragView: true
+        }
+    };
+
+    if (visNetworkInstance) {
+        visNetworkInstance.destroy();
+    }
+
+    visNetworkInstance = new vis.Network(container, data, options);
+
+    // Node click handler -> Open Inspector Drawer
+    visNetworkInstance.on("click", params => {
+        if (params.nodes.length > 0) {
+            const nodeId = params.nodes[0];
+            const node = nodesData.find(n => n.id === nodeId);
+            if (node) {
+                showNodeInspector(node.raw);
+            }
+        } else {
+            const insp = document.getElementById("nodeInspector");
+            if (insp) insp.classList.add("hidden");
+        }
+    });
+
+    // Fit view after stabilization
+    visNetworkInstance.once("stabilizationIterationsDone", () => {
+        visNetworkInstance.fit({ animation: { duration: 600, easingFunction: "easeInOutQuad" } });
+    });
+}
+
+function showNodeInspector(nodeRaw) {
+    const insp = document.getElementById("nodeInspector");
+    const badge = document.getElementById("inspectorBadge");
+    const title = document.getElementById("inspectorTitle");
+    const body = document.getElementById("inspectorBody");
+    if (!insp || !badge || !title || !body) return;
+
+    badge.textContent = (nodeRaw.group || "Entity").toUpperCase();
+    title.textContent = nodeRaw.label.replace("\n", " ");
+    body.innerHTML = nodeRaw.title || "Không có thêm chi tiết.";
+
+    insp.classList.remove("hidden");
 }
 
 /* ================= HOUSE PRICE HANDLER ================= */

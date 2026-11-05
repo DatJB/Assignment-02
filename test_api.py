@@ -47,6 +47,12 @@ def run_tests():
     print(f"    Diagnosis: {d_res['data']['diagnosis']}")
     print(f"    Risk level: {d_res['data']['risk_level']} ({d_res['data']['probability_positive']}%)")
     assert d_res['data']['prediction'] in [0, 1]
+    assert "recommended_medications" in d_res['data']
+    assert len(d_res['data']['recommended_medications']) > 0
+    assert "knowledge_graph" in d_res['data']
+    assert len(d_res['data']['knowledge_graph']['nodes']) > 0
+    print(f"    FPT Long Chau Meds suggested: {len(d_res['data']['recommended_medications'])}")
+    print(f"    Knowledge Graph nodes: {len(d_res['data']['knowledge_graph']['nodes'])}, edges: {len(d_res['data']['knowledge_graph']['edges'])}")
 
     # 4. Test House Price Prediction
     house_payload = {

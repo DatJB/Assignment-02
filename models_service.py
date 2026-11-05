@@ -5,6 +5,7 @@ import datetime
 import joblib
 import pandas as pd
 import numpy as np
+from diabetes_knowledge_graph import neo4j_graph
 
 # Feature engineering function required by diabetes_model.joblib
 def add_features(data):
@@ -310,7 +311,7 @@ class ModelManager:
         else:
             assessments.append({"metric": "Đường huyết", "val": f"{glucose} mg/dL", "status": "Cao", "note": "Đường huyết cao cần theo dõi y tế (≥ 126 mg/dL)."})
 
-        return {
+        base_result = {
             "prediction": pred,
             "diagnosis": "Dương tính (Nguy cơ mắc tiểu đường)" if pred == 1 else "Âm tính (Không mắc tiểu đường)",
             "probability_positive": risk_percentage,
@@ -321,6 +322,23 @@ class ModelManager:
             "assessments": assessments,
             "input_echo": row
         }
+
+        # Knowledge Graph & FPT Long Châu Medication Recommendation Engine
+        try:
+            graph_rec = neo4j_graph.generate_patient_recommendations(row, base_result)
+            base_result["recommended_medications"] = graph_rec.get("recommended_medications", [])
+            base_result["patient_conditions"] = graph_rec.get("patient_conditions", [])
+            base_result["clinical_alerts"] = graph_rec.get("clinical_alerts", [])
+            base_result["knowledge_graph"] = graph_rec.get("knowledge_graph", {})
+            base_result["cypher_query"] = graph_rec.get("cypher_query", "")
+            base_result["neo4j_status"] = graph_rec.get("neo4j_status", {})
+        except Exception as ge:
+            print(f"[Warning] Failed to generate knowledge graph recommendations: {ge}")
+            base_result["recommended_medications"] = []
+            base_result["knowledge_graph"] = {}
+            base_result["cypher_query"] = ""
+
+        return base_result
 
     # ==================== HOUSE PRICE PREDICTION ====================
     def predict_house_price(self, data: dict) -> dict:

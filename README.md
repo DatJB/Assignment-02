@@ -77,9 +77,12 @@ python test_api.py
 
 | Phương thức | Đường dẫn | Chức năng |
 | :--- | :--- | :--- |
-| POST | `/api/predict/diabetes` | Dự đoán nguy cơ đái tháo đường từ chỉ số lâm sàng |
+| POST | `/api/predict/diabetes` | Dự đoán nguy cơ đái tháo đường, gợi ý thuốc FPT Long Châu & Knowledge Graph |
 | POST | `/api/predict/house-price` | Ước tính giá nhà King County theo USD và VNĐ |
 | POST | `/api/predict/ecommerce` | Phân loại 8 khía cạnh quan tâm từ văn bản đánh giá |
+| GET | `/api/diabetes/medications` | Danh mục 9 thuốc & dinh dưỡng đái tháo đường chính hãng FPT Long Châu |
+| GET | `/api/diabetes/knowledge-graph/full` | Trích xuất toàn bộ Đồ thị Tri thức Bệnh học - Dược lý - Long Châu |
+| POST | `/api/diabetes/neo4j-connect` | Cấu hình & thử kết nối trực tiếp đến Neo4j Database |
 | GET | `/api/model-info` | Lấy siêu dữ liệu cấu hình (danh mục Zipcode, Aspects) |
 | GET | `/api/health` | Kiểm tra trạng thái sẵn sàng của 3 mô hình |
 

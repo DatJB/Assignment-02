@@ -13,6 +13,9 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Vis-Network CDN for Neo4j Knowledge Graph -->
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/vis-network/styles/vis-network.min.css" />
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
@@ -246,6 +249,161 @@
                                     <h4>Khuyến Nghị Chăm Sóc Sức Khỏe</h4>
                                 </div>
                                 <p id="d_advice_text">Duy trì lối sống lành mạnh, ăn uống thanh đạm và kiểm tra sức khỏe định kỳ hàng năm.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= SECTION: FPT LONG CHAU MEDICATIONS & NEO4J KNOWLEDGE GRAPH ================= -->
+                <div class="diabetes-extensions-container hidden" id="diabetesExtensions">
+                    <!-- Tab Switcher between Medication Recommendations & Knowledge Graph -->
+                    <div class="ext-header-bar">
+                        <div class="ext-title-group">
+                            <span class="badge badge-brand">
+                                <i data-lucide="network"></i> Hệ Tri Thức Y Tế & Nhà Thuốc
+                            </span>
+                            <h3 class="ext-heading">Tư Vấn Thuốc FPT Long Châu & Neo4j Knowledge Graph</h3>
+                            <p class="ext-desc">Khám phá phác đồ điều trị cá nhân hóa từ chuỗi nhà thuốc FPT Long Châu và trực quan hóa mạng lưới liên kết bệnh học - dược lý bằng Đồ thị Tri thức Neo4j.</p>
+                        </div>
+                        <div class="ext-tab-controls">
+                            <button type="button" class="btn-ext-tab active" data-ext-tab="ext-medications" id="btnTabMeds">
+                                <i data-lucide="pill"></i> Thuốc Tham Khảo FPT Long Châu (<span id="extMedCount">0</span>)
+                            </button>
+                            <button type="button" class="btn-ext-tab" data-ext-tab="ext-graph" id="btnTabGraph">
+                                <i data-lucide="git-fork"></i> Neo4j Knowledge Graph
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SUB-TAB 1: FPT LONG CHAU MEDICATIONS -->
+                    <div class="ext-tab-pane active" id="ext-medications">
+                        <div class="longchau-banner">
+                            <div class="lc-banner-left">
+                                <div class="lc-logo-badge">
+                                    <span class="lc-text-fpt">FPT</span>
+                                    <span class="lc-text-lc">Long Châu</span>
+                                </div>
+                                <div class="lc-banner-text">
+                                    <h4>Danh mục Thuốc & Dinh Dưỡng Đái Tháo Đường Chính Hãng</h4>
+                                    <p>Tất cả sản phẩm đều có bán tại chuỗi <strong>Nhà thuốc FPT Long Châu</strong> toàn quốc. Phác đồ được tối ưu hóa dựa trên chỉ số lâm sàng và khuyến cáo ADA.</p>
+                                </div>
+                            </div>
+                            <div class="lc-disclaimer-pill">
+                                <i data-lucide="alert-circle"></i>
+                                <span>Thuốc kê đơn (Rx) - Cần có chỉ định của Bác sĩ chuyên khoa</span>
+                            </div>
+                        </div>
+
+                        <!-- Clinical Alerts (e.g. SGLT-2 for Cardiovascular / Hypertension) -->
+                        <div class="clinical-alert-banner hidden" id="clinicalAlertBanner">
+                            <i data-lucide="heart-pulse"></i>
+                            <div id="clinicalAlertText"></div>
+                        </div>
+
+                        <!-- Grid of Medication Cards -->
+                        <div class="medications-grid" id="medicationsGrid">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- SUB-TAB 2: NEO4J KNOWLEDGE GRAPH -->
+                    <div class="ext-tab-pane" id="ext-graph">
+                        <div class="graph-toolbar">
+                            <div class="graph-toolbar-left">
+                                <div class="graph-status-pill" id="neo4jStatusPill">
+                                    <span class="pulse-dot"></span>
+                                    <span id="neo4jStatusLabel">Neo4j Engine: Sẵn sàng</span>
+                                </div>
+                                <div class="graph-legend">
+                                    <span class="legend-chip chip-patient"><span class="chip-dot"></span> Bệnh nhân</span>
+                                    <span class="legend-chip chip-bio"><span class="chip-dot"></span> Chỉ số</span>
+                                    <span class="legend-chip chip-disease"><span class="chip-dot"></span> Bệnh lý</span>
+                                    <span class="legend-chip chip-class"><span class="chip-dot"></span> Nhóm dược lý</span>
+                                    <span class="legend-chip chip-med"><span class="chip-dot"></span> Thuốc Long Châu</span>
+                                    <span class="legend-chip chip-organ"><span class="chip-dot"></span> Cơ quan</span>
+                                </div>
+                            </div>
+                            <div class="graph-toolbar-right">
+                                <button type="button" class="btn-graph-action" id="btnResetGraphView" title="Định vị lại góc nhìn">
+                                    <i data-lucide="maximize"></i> Căn giữa
+                                </button>
+                                <button type="button" class="btn-graph-action" id="btnTogglePhysics" title="Tắt / Bật chuyển động">
+                                    <i data-lucide="zap"></i> Cố định
+                                </button>
+                                <button type="button" class="btn-graph-action" id="btnShowCypher" title="Xem mã Neo4j Cypher">
+                                    <i data-lucide="terminal"></i> Xem Cypher
+                                </button>
+                                <button type="button" class="btn-graph-action" id="btnNeo4jSettings" title="Cấu hình kết nối Neo4j">
+                                    <i data-lucide="database"></i> Neo4j Server
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Graph Canvas Container -->
+                        <div class="knowledge-graph-wrapper">
+                            <div id="diabetesGraphCanvas" class="graph-canvas"></div>
+                            
+                            <!-- Node Inspector Drawer (Shows when clicking a node) -->
+                            <div class="node-inspector hidden" id="nodeInspector">
+                                <div class="inspector-header">
+                                    <span class="inspector-badge" id="inspectorBadge">Node Type</span>
+                                    <button type="button" class="btn-close-inspector" id="btnCloseInspector">&times;</button>
+                                </div>
+                                <h4 class="inspector-title" id="inspectorTitle">Tên Node</h4>
+                                <div class="inspector-body" id="inspectorBody">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cypher Query Box (Collapsible) -->
+                        <div class="cypher-box-wrapper hidden" id="cypherBoxWrapper">
+                            <div class="cypher-header">
+                                <div class="cypher-title">
+                                    <i data-lucide="code-2"></i>
+                                    <span>Mã Neo4j Cypher Query (Tạo & Truy vấn Đồ thị trong Neo4j Browser)</span>
+                                </div>
+                                <button type="button" class="btn-copy-cypher" id="btnCopyCypher">
+                                    <i data-lucide="copy"></i> Sao chép Cypher
+                                </button>
+                            </div>
+                            <pre class="cypher-code"><code id="cypherCodeDisplay"></code></pre>
+                        </div>
+
+                        <!-- Neo4j Connection Modal -->
+                        <div class="neo4j-modal-overlay hidden" id="neo4jModal">
+                            <div class="neo4j-modal-card">
+                                <div class="modal-header">
+                                    <div class="modal-title">
+                                        <i data-lucide="database"></i>
+                                        <h3>Cấu hình Kết nối Neo4j Database</h3>
+                                    </div>
+                                    <button type="button" class="modal-close" id="btnCloseNeo4jModal">&times;</button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="modal-intro">Kết nối trực tiếp tới instance Neo4j của bạn (Neo4j Desktop, Neo4j Aura hoặc Docker) để đồng bộ hóa và lưu trữ đồ thị tri thức.</p>
+                                    <div class="form-group">
+                                        <label>Neo4j Bolt URI</label>
+                                        <input type="text" id="neo4jUri" value="bolt://localhost:7687" placeholder="bolt://localhost:7687">
+                                    </div>
+                                    <div class="form-row grid-2">
+                                        <div class="form-group">
+                                            <label>Username</label>
+                                            <input type="text" id="neo4jUser" value="neo4j" placeholder="neo4j">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Password</label>
+                                            <input type="password" id="neo4jPassword" value="password" placeholder="Mật khẩu Neo4j">
+                                        </div>
+                                    </div>
+                                    <div class="neo4j-connect-status" id="neo4jConnectMsg"></div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn-modal-cancel" id="btnCancelNeo4jModal">Đóng</button>
+                                    <button type="button" class="btn-modal-submit" id="btnTestNeo4jConnect">
+                                        <i data-lucide="refresh-cw"></i> Thử Kết Nối & Đồng Bộ
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

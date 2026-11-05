@@ -2,6 +2,7 @@ import os
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 from models_service import manager
+from diabetes_knowledge_graph import neo4j_graph, FPT_LONG_CHAU_MEDICATIONS
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 CORS(app)
@@ -46,6 +47,58 @@ def model_info():
         },
         "metadata": metadata
     })
+
+@app.route("/api/diabetes/knowledge-graph/full", methods=["GET"])
+def diabetes_full_knowledge_graph():
+    try:
+        graph = neo4j_graph.get_full_graph()
+        return jsonify({
+            "status": "success",
+            "data": graph,
+            "neo4j_status": {
+                "connected": neo4j_graph.is_connected,
+                "uri": neo4j_graph.uri,
+                "mode": "Live Neo4j Bolt Instance" if neo4j_graph.is_connected else "In-Memory Knowledge Graph Engine",
+                "error": neo4j_graph.connection_error
+            }
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/diabetes/medications", methods=["GET"])
+def diabetes_medications():
+    return jsonify({
+        "status": "success",
+        "data": FPT_LONG_CHAU_MEDICATIONS,
+        "pharmacy": {
+            "name": "Nhà Thuốc FPT Long Châu",
+            "website": "https://nhathuoclongchau.com.vn",
+            "disclaimer": "Thuốc kê đơn (Rx). Chỉ sử dụng khi có chỉ định và hướng dẫn của bác sĩ chuyên khoa."
+        }
+    })
+
+@app.route("/api/diabetes/neo4j-connect", methods=["POST"])
+def diabetes_neo4j_connect():
+    try:
+        data = request.get_json(force=True) or {}
+        uri = data.get("uri", neo4j_graph.uri)
+        user = data.get("user", neo4j_graph.user)
+        password = data.get("password", neo4j_graph.password)
+
+        neo4j_graph.uri = uri
+        neo4j_graph.user = user
+        neo4j_graph.password = password
+        neo4j_graph.init_neo4j_driver()
+
+        return jsonify({
+            "status": "success" if neo4j_graph.is_connected else "info",
+            "connected": neo4j_graph.is_connected,
+            "mode": "Live Neo4j Bolt Instance" if neo4j_graph.is_connected else "In-Memory Knowledge Graph Engine",
+            "error": neo4j_graph.connection_error,
+            "message": "Kết nối Neo4j thành công!" if neo4j_graph.is_connected else f"Không kết nối được Neo4j ({neo4j_graph.connection_error}). Đang dùng chế độ In-Memory Knowledge Graph."
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route("/api/predict/diabetes", methods=["POST"])
 def predict_diabetes():
